@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-multipart
+requests
+urllib3
+pymupdf
+Pillow
+numpy
+opencv-python-headless
+python-docx
+latex2mathml
+mathml2omml
