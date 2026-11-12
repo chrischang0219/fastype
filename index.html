@@ -305,19 +305,17 @@
 
             <label class="checkbox-item">
               <input type="checkbox" id="chkCrop" class="custom-checkbox" />
-              <span>自動裁切圖片</span>
-              <span class="beta-badge">Beta</span>
+              <span>自動裁切圖片 <span style="color: var(--text-secondary);">(測試階段)</span></span>
             </label>
 
             <label class="checkbox-item">
               <input type="checkbox" id="chkOmml" class="custom-checkbox" />
-              <span>數學方程式轉換</span>
-              <span class="beta-badge">Beta</span>
+              <span>數學方程式轉換 <span style="color: var(--text-secondary);">(測試階段)</span></span>
             </label>
 
             <label class="checkbox-item">
               <input type="checkbox" id="chkAns" class="custom-checkbox" />
-              <span>文末附帶解答 <span style="color: var(--text-secondary);">(辨識考卷答案)</span></span>
+              <span>文末附帶解答 <span style="color: var(--text-secondary);">(測試階段)</span></span>
             </label>
           </div>
         </div>
@@ -466,7 +464,7 @@
     let currentTaskId = null;
     let pollTimer = null;
 
-    function setTheme(theme) {
+    function applyThemeVisuals(theme) {
       const root = document.documentElement;
       const btnLight = document.getElementById('btnLight');
       const btnDark = document.getElementById('btnDark');
@@ -488,6 +486,23 @@
         btnDark.style.color = 'var(--text-secondary)';
         btnDark.style.boxShadow = 'none';
       }
+    }
+
+    function setTheme(theme) {
+      sessionStorage.setItem('exam_manual_theme', theme);
+      applyThemeVisuals(theme);
+    }
+
+    function initAutoTheme() {
+      const manual = sessionStorage.getItem('exam_manual_theme');
+      if (manual === 'dark' || manual === 'light') {
+        applyThemeVisuals(manual);
+        return;
+      }
+      // 早上 06:00 ~ 18:00 自動亮色，晚上 18:00 ~ 06:00 自動暗色
+      const hour = new Date().getHours();
+      const autoTheme = (hour >= 6 && hour < 18) ? 'light' : 'dark';
+      applyThemeVisuals(autoTheme);
     }
 
     async function initApp() {
@@ -726,6 +741,7 @@
       }, 2600);
     }
 
+    initAutoTheme();
     initApp();
   </script>
 </body>

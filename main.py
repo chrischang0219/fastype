@@ -729,6 +729,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def allow_google_sites_iframe(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = "frame-ancestors 'self' https://sites.google.com https://*.googleusercontent.com;"
+    if "X-Frame-Options" in response.headers:
+        del response.headers["X-Frame-Options"]
+    return response
+
 # 環境變數設定（與原本 Streamlit Secrets 相同名稱）
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
