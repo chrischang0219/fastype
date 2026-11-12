@@ -692,11 +692,11 @@ def log_usage_to_gsheet(webhook_url, filename, pages_count, model_id, tokens):
         pass
 
 def call_api_with_retry(parts, model_id, api_key):
-    models_to_try = [model_id] + [m for m in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-2.5-flash"] if m != model_id]
+    models_to_try = [model_id] + [m for m in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"] if m != model_id]
     
     for mid in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{mid}:generateContent?key={api_key}"
-        for attempt in range(2):
+        for attempt in range(3):
             try:
                 res = requests.post(
                     url, 
@@ -710,9 +710,9 @@ def call_api_with_retry(parts, model_id, api_key):
                     usage = data.get('usageMetadata', {})
                     return text_out, usage, mid
                 elif res.status_code == 429:
-                    time.sleep(20)
+                    time.sleep(15)
                 elif res.status_code == 503:
-                    time.sleep(10)
+                    time.sleep(8)
                 else:
                     break
             except Exception:
