@@ -213,7 +213,7 @@
       background-color: var(--accent-soft);
     }
 
-    /* 響應式處理：小螢幕自動轉單欄 */
+    /* 響應式處理：分割視窗或手機單欄時，依照「上傳與設定 → 頁數與執行 → 轉檔結果 → 用量監控」的自然動線排序 */
     @media (max-width: 1060px) {
       .header-grid {
         grid-template-columns: 1fr;
@@ -228,6 +228,10 @@
       .checkbox-grid {
         grid-template-columns: 1fr;
       }
+      .card-upload { order: 1; }
+      .card-controls { order: 2; }
+      .card-result { order: 3; }
+      .card-quota { order: 4; }
     }
   </style>
 </head>
@@ -281,7 +285,7 @@
     <main class="main-grid">
       
       <!-- ==================== Row 1 Left：01 / 上傳與設定 ==================== -->
-      <section class="card p-5 flex flex-col justify-between gap-4">
+      <section class="card card-upload p-5 flex flex-col justify-between gap-4">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-bold tracking-wide flex items-center gap-2" style="color: var(--text-primary);">
             <span style="color: var(--accent-primary);">01 /</span> 上傳與設定
@@ -323,7 +327,7 @@
       </section>
 
       <!-- ==================== Row 1 Right：02 / 轉檔結果 ==================== -->
-      <section class="card p-5 flex flex-col justify-between gap-3.5">
+      <section class="card card-result p-5 flex flex-col justify-between gap-3.5">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-bold tracking-wide flex items-center gap-2" style="color: var(--text-primary);">
             <span style="color: var(--accent-primary);">02 /</span> 轉檔結果
@@ -376,7 +380,7 @@
       </section>
 
       <!-- ==================== Row 2 Left：頁數範圍、操作按鈕與進度 ==================== -->
-      <section class="card p-5 flex flex-col justify-between gap-3.5">
+      <section class="card card-controls p-5 flex flex-col justify-between gap-3.5">
         <!-- 頁數範圍輸入列 -->
         <div class="subcard flex items-center overflow-hidden px-3.5 py-2 gap-3">
           <span class="text-xs font-bold whitespace-nowrap" style="color: var(--text-secondary);">頁數範圍</span>
@@ -412,7 +416,7 @@
       </section>
 
       <!-- ==================== Row 2 Right：📊 今日額度與用量監控 ==================== -->
-      <section class="card p-5 flex flex-col justify-between gap-3.5">
+      <section class="card card-quota p-5 flex flex-col justify-between gap-3.5">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-bold flex items-center gap-2" style="color: var(--text-primary);">
             <span>📊</span> 今日額度與用量監控
