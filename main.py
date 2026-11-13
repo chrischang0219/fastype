@@ -748,6 +748,79 @@ GENERATED_FILES = {}
 SESSION_STATS = {"request_count": 0, "total_tokens": 0}
 HISTORY_LIST = []
 
+
+def _build_app_icon(size: int) -> bytes:
+    """讀取專案資料夾中的 icon.png 並自動縮放為指定尺寸（自動去背白色外框），若無則繪製預設焦糖棕文件圖示"""
+    if os.path.exists("icon.png"):
+        try:
+            img = Image.open("icon.png").convert("RGBA")
+            # 若圖片四周為純白背景，自動將外圍白色轉為透明，讓桌面圓角圖示更乾淨俐落
+            if np is not None:
+                arr = np.array(img)
+                r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+                # 僅針對貼近邊緣的純白區域做 flood-fill 透明化
+                white_mask = (r > 245) & (g > 245) & (b > 245)
+                if cv2 is not None:
+                    h, w = white_mask.shape
+                    ff_mask = np.zeros((h + 2, w + 2), np.uint8)
+                    flood = white_mask.astype(np.uint8) * 255
+                    for seed in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]:
+                        if flood[seed[1], seed[0]] == 255:
+                            cv2.floodFill(flood, ff_mask, seed, 128)
+                    arr[flood == 128, 3] = 0
+                    img = Image.fromarray(arr)
+            img = img.resize((size, size), Image.Resampling.LANCZOS)
+            bio = io.BytesIO()
+            img.save(bio, format="PNG")
+            return bio.getvalue()
+        except Exception:
+            pass
+
+    # 預設焦糖棕圓角方塊 + 白色文件圖示（備援）
+    from PIL import ImageDraw
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    pad = int(size * 0.06)
+    radius = int(size * 0.22)
+    draw.rounded_rectangle([pad, pad, size - pad, size - pad], radius=radius, fill=(140, 94, 60, 255))
+    doc_l, doc_t = int(size * 0.30), int(size * 0.22)
+    doc_r, doc_b = int(size * 0.70), int(size * 0.78)
+    draw.rounded_rectangle([doc_l, doc_t, doc_r, doc_b], radius=int(size * 0.04), outline=(250, 248, 245, 255), width=max(2, int(size * 0.035)))
+    for i, ratio in enumerate([0.40, 0.52, 0.64]):
+        y = int(size * ratio)
+        x_end = int(size * (0.60 if i < 2 else 0.52))
+        draw.line([(int(size * 0.38), y), (x_end, y)], fill=(250, 248, 245, 255), width=max(2, int(size * 0.03)))
+    bio = io.BytesIO()
+    img.save(bio, format="PNG")
+    return bio.getvalue()
+
+@app.get("/manifest.json")
+async def get_manifest():
+    return {
+        "name": "考卷排版神器 Pro",
+        "short_name": "考卷排版神器",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#F4F1EA",
+        "theme_color": "#8C5E3C",
+        "icons": [
+            {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+        ]
+    }
+
+@app.get("/icon-192.png")
+async def get_icon_192():
+    return Response(content=_build_app_icon(192), media_type="image/png")
+
+@app.get("/icon-512.png")
+async def get_icon_512():
+    return Response(content=_build_app_icon(512), media_type="image/png")
+
+@app.get("/apple-touch-icon.png")
+async def get_apple_icon():
+    return Response(content=_build_app_icon(180), media_type="image/png")
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     with open("index.html", "r", encoding="utf-8") as f:
