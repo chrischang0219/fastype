@@ -750,46 +750,49 @@ HISTORY_LIST = []
 
 
 def _build_app_icon(size: int) -> bytes:
-    """讀取專案資料夾中的 icon.png 並自動縮放為指定尺寸（自動去背白色外框），若無則繪製預設焦糖棕文件圖示"""
+    """讀取 icon.png，徹底去除外圍白邊並自動裁切留白放大主體比例"""
     if os.path.exists("icon.png"):
         try:
             img = Image.open("icon.png").convert("RGBA")
-            # 若圖片四周為純白背景，自動將外圍白色轉為透明，讓桌面圓角圖示更乾淨俐落
-            if np is not None:
-                arr = np.array(img)
+            if np is not None and cv2 is not None:
+                arr = np.array(img, dtype=np.int16)
                 r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
-                # 僅針對貼近邊緣的純白區域做 flood-fill 透明化
-                white_mask = (r > 245) & (g > 245) & (b > 245)
-                if cv2 is not None:
-                    h, w = white_mask.shape
-                    ff_mask = np.zeros((h + 2, w + 2), np.uint8)
-                    flood = white_mask.astype(np.uint8) * 255
-                    for seed in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]:
-                        if flood[seed[1], seed[0]] == 255:
-                            cv2.floodFill(flood, ff_mask, seed, 128)
-                    arr[flood == 128, 3] = 0
-                    img = Image.fromarray(arr)
-            img = img.resize((size, size), Image.Resampling.LANCZOS)
+                white_mask = (r > 215) & (g > 215) & (b > 215)
+                h, w = white_mask.shape
+                ff_mask = np.zeros((h + 2, w + 2), np.uint8)
+                flood = white_mask.astype(np.uint8) * 255
+                for seed in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]:
+                    if flood[seed[1], seed[0]] == 255:
+                        cv2.floodFill(flood, ff_mask, seed, 128)
+                bg_mask = (flood == 128).astype(np.uint8) * 255
+                kernel = np.ones((3, 3), np.uint8)
+                bg_mask = cv2.dilate(bg_mask, kernel, iterations=1)
+                alpha = 255 - bg_mask
+                alpha = cv2.GaussianBlur(alpha, (3, 3), 0)
+                arr[:, :, 3] = alpha
+                img = Image.fromarray(arr.astype(np.uint8))
+
+            bbox = img.getbbox()
+            if bbox:
+                img = img.crop(bbox)
+            pad_ratio = 0.02
+            inner_size = max(1, int(size * (1 - pad_ratio * 2)))
+            img = img.resize((inner_size, inner_size), Image.Resampling.LANCZOS)
+            canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+            offset = (size - inner_size) // 2
+            canvas.paste(img, (offset, offset), img)
+
             bio = io.BytesIO()
-            img.save(bio, format="PNG")
+            canvas.save(bio, format="PNG")
             return bio.getvalue()
         except Exception:
             pass
 
-    # 預設焦糖棕圓角方塊 + 白色文件圖示（備援）
     from PIL import ImageDraw
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    pad = int(size * 0.06)
-    radius = int(size * 0.22)
-    draw.rounded_rectangle([pad, pad, size - pad, size - pad], radius=radius, fill=(140, 94, 60, 255))
-    doc_l, doc_t = int(size * 0.30), int(size * 0.22)
-    doc_r, doc_b = int(size * 0.70), int(size * 0.78)
-    draw.rounded_rectangle([doc_l, doc_t, doc_r, doc_b], radius=int(size * 0.04), outline=(250, 248, 245, 255), width=max(2, int(size * 0.035)))
-    for i, ratio in enumerate([0.40, 0.52, 0.64]):
-        y = int(size * ratio)
-        x_end = int(size * (0.60 if i < 2 else 0.52))
-        draw.line([(int(size * 0.38), y), (x_end, y)], fill=(250, 248, 245, 255), width=max(2, int(size * 0.03)))
+    pad = int(size * 0.04)
+    draw.rounded_rectangle([pad, pad, size - pad, size - pad], radius=int(size * 0.22), fill=(140, 94, 60, 255))
     bio = io.BytesIO()
     img.save(bio, format="PNG")
     return bio.getvalue()
@@ -856,7 +859,7 @@ async def get_usage():
     return {
         "count": disp_count,
         "tokens": disp_tokens,
-        "limit": 200000,
+        "limit": 500000,
         "history": HISTORY_LIST[:20],
     }
 

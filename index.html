@@ -560,7 +560,7 @@
         const res = await fetch('/api/usage');
         if (!res.ok) return;
         const data = await res.json();
-        const ratio = Math.min((data.tokens || 0) / (data.limit || 200000), 1.0);
+        const ratio = Math.min((data.tokens || 0) / (data.limit || 500000), 1.0);
         const pctStr = (ratio * 100).toFixed(2) + '%';
         document.getElementById('quotaPctText').textContent = '今日額度：' + pctStr;
         document.getElementById('quotaCountText').textContent = (data.count || 0) + ' 次';
