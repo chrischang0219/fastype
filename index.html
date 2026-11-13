@@ -696,6 +696,17 @@
         pollTimer = setInterval(async () => {
           try {
             const stRes = await fetch(`/api/status/${task_id}`);
+            if (stRes.status === 404) {
+              clearInterval(pollTimer);
+              pollTimer = null;
+              btnStart.disabled = false;
+              currentTaskId = null;
+              progressBar.style.width = '0%';
+              progressPercent.textContent = '0%';
+              statusText.textContent = '⚠️ 伺服器剛剛重啟或記憶體超限，請重新點擊「開始 AI 解析並排版」';
+              showToast('⚠️ 任務中斷，請重新點擊開始解析');
+              return;
+            }
             if (!stRes.ok) return;
             const st = await stRes.json();
             progressBar.style.width = (st.pct || 0) + '%';

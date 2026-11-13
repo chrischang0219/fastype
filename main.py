@@ -1,4 +1,5 @@
 import os
+import gc
 import json
 import uuid
 import threading
@@ -888,7 +889,7 @@ def _run_parse_job(
 
             parts = [{"text": prompt}]
             for idx in batch:
-                pix = doc[idx].get_pixmap(dpi=250)
+                pix = doc[idx].get_pixmap(dpi=180)
                 jpg_bytes = pix.tobytes("jpeg")
                 if enable_image_crop:
                     pil_page = Image.open(io.BytesIO(jpg_bytes)).convert("RGB")
@@ -902,6 +903,8 @@ def _run_parse_job(
                 parts.append({"inline_data": {"mime_type": "image/jpeg", "data": b64}})
 
             txt_b, usage_b, actual_mid_b = call_api_with_retry(parts, selected_model, GEMINI_API_KEY)
+            del parts
+            gc.collect()
             if not txt_b:
                 all_ok = False
                 break
@@ -940,10 +943,12 @@ def _run_parse_job(
             請一題一題看清楚括號內手寫字母（特別區分 D 與 B、A 與 C），絕對不可猜測或跳號。若完全沒有解答則輸出空字串。"""
             ans_parts = [{"text": ans_prompt}]
             for idx in indices:
-                pix = doc[idx].get_pixmap(dpi=250)
+                pix = doc[idx].get_pixmap(dpi=180)
                 b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
                 ans_parts.append({"inline_data": {"mime_type": "image/jpeg", "data": b64}})
             ans_out, ans_usage, actual_mid_ans = call_api_with_retry(ans_parts, selected_model, GEMINI_API_KEY)
+            del ans_parts
+            gc.collect()
             if ans_out and ans_out.strip():
                 if actual_mid_ans and actual_mid_ans not in used_models:
                     used_models.append(actual_mid_ans)
@@ -951,6 +956,8 @@ def _run_parse_job(
                 merged_answers = [ans_out.strip()]
 
         doc.close()
+        del pdf_bytes
+        gc.collect()
         txt = f"HEADER: {final_header}\nCONTENT_START\n" + "\n".join(merged_contents) + "\nCONTENT_END" if (all_ok and merged_contents) else None
 
         if not txt:
@@ -990,7 +997,7 @@ def _run_parse_job(
             "pages": len(indices),
         }
         HISTORY_LIST.insert(0, item_meta)
-        if len(HISTORY_LIST) > 20:
+        if len(HISTORY_LIST) > 10:
             old = HISTORY_LIST.pop()
             GENERATED_FILES.pop(old["id"], None)
 
@@ -1002,6 +1009,8 @@ def _run_parse_job(
         })
     except Exception as e:
         TASKS[task_id].update({"status": "error", "pct": 0, "message": f"❌ 處理發生錯誤：{str(e)}"})
+    finally:
+        gc.collect()
 
 @app.post("/api/parse")
 async def start_parse(
